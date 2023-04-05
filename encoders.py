@@ -50,7 +50,7 @@ if __name__ == '__main__':
 	time_values = (time_index - time_index[0]).astype('timedelta64[ms]').astype(float) / 1000
 	A = 1.0
 	f = 10.0
-	phi = 0.0
+	phi = 1.0
 	
 	# Generate the sine wave
 	df1 = pd.DataFrame(data={'sin': A * np.sin(2 * np.pi * f * time_values + phi)},

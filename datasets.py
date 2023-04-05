@@ -3,7 +3,7 @@ from torch.utils.data import Dataset
 import torch
 
 
-class MultipleTS(Dataset):
+class MultiTimeSeries(Dataset):
 	def __init__(self, kinematics: torch.Tensor, forces: torch.Tensor,
 				 feature_lags: int, target_lags: int, feature_target_intersection: int):
 		"""
@@ -40,17 +40,17 @@ class MultipleTS(Dataset):
 	
 	def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
 		# TODO: maybe add random start index.
-		print("====================================================================================================")
+		# print("====================================================================================================")
 		ds_idx = idx // self.n_windows_per_ds
 		win_idx = idx % self.n_windows_per_ds
-		print(f"idx={idx} [ds={ds_idx}, win={win_idx}]")
+		# print(f"idx={idx} [ds={ds_idx}, win={win_idx}]")
 		features_window = self.kinematics[ds_idx, win_idx: win_idx + self.feature_lag]
-		print(f"feature window [{ds_idx}, {win_idx}:{win_idx + self.feature_lag}]-")
-		print(features_window)
+		# print(f"feature window [{ds_idx}, {win_idx}:{win_idx + self.feature_lag}]-")
+		# print(features_window)
 		target_window = self.forces[ds_idx, win_idx + self.feature_lag - self.feature_target_intersect:
 											win_idx + self.feature_lag - self.feature_target_intersect + self.target_lag]
-		print(f"target window [{ds_idx}, {win_idx + self.feature_lag - self.feature_target_intersect}:{win_idx + self.feature_lag - self.feature_target_intersect + self.target_lag}]-")
-		print(target_window)
+		# print(f"target window [{ds_idx}, {win_idx + self.feature_lag - self.feature_target_intersect}:{win_idx + self.feature_lag - self.feature_target_intersect + self.target_lag}]-")
+		# print(target_window)
 		
 		return features_window, target_window
 
@@ -61,7 +61,7 @@ if __name__ == '__main__':
 	
 	f = torch.Tensor([[[1], [2], [3], [4], [5]],
 					  [[8], [9], [10], [11], [12]]])
-	ds = MultipleTS(k, f, 3, 2, 1)
+	ds = MultiTimeSeries(k, f, 3, 2, 1)
 	dl = torch.utils.data.DataLoader(ds)
 	print(len(ds))
 	for x, y in dl:

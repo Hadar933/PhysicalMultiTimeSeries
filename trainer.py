@@ -28,7 +28,6 @@ class Trainer:
 				 patience_tolerance: float = 0.005,
 				 n_epochs: Optional[int] = 100,
 				 patience: Optional[int] = 10,
-				 batch_size: Optional[int] = 64,
 				 seed: int = 3407):
 		torch.manual_seed(seed)
 		self.patience_tolerance: float = patience_tolerance
@@ -44,6 +43,7 @@ class Trainer:
 		self.tb_writer: SummaryWriter = None
 		self.best_val_loss: float = float('inf')
 		self.model_dir: str = ""
+		self.best_model_path: str = ""
 		self._create_model_dir()
 	
 	def _create_model_dir(self):
@@ -97,7 +97,10 @@ class Trainer:
 	def _finish_epoch(self, val_loss, prev_val_loss, time, epoch):
 		if val_loss < self.best_val_loss:  # if val is improved, we update the best model
 			self.best_val_loss = val_loss
-			torch.save(self.model.state_dict(), f"{self.model_dir}/best_{self.model_name}_{time}_epoch_{epoch}.pt")
+			if self.best_model_path:
+				os.remove(self.best_model_path)
+			self.best_model_path = f"{self.model_dir}/best_{self.model_name}_{time}_epoch_{epoch}.pt"
+			torch.save(self.model.state_dict(), self.best_model_path)
 		elif torch.abs(val_loss - prev_val_loss) <= self.patience_tolerance:  # if val doesn't improve, counter += 1
 			self.early_stopping += 1
 		if self.early_stopping >= self.patience:  # if patience value is reached, the training process halts
@@ -127,45 +130,10 @@ class Trainer:
 				pred = self.model(inputs)
 				predictions.append(pred.item())
 				true_labels.append(true.item())
-		return pd.DataFrame({'pred': predictions, 'true': true_labels})
+		return torch.Tensor(predictions), torch.Tensor(true_labels)
 	
 	def load_trained_model(self, trained_model_path: str):
 		self.model.load_state_dict(torch.load(trained_model_path))
 		self.model.eval()
 
 
-if __name__ == '__main__':
-	mlp = torch.nn.Sequential(
-		nn.Conv2d(in_channels=1, out_channels=6, kernel_size=3, stride=1, padding=1),
-		nn.ReLU(),
-		nn.MaxPool2d(kernel_size=2, stride=2),
-		nn.Conv2d(in_channels=6, out_channels=6, kernel_size=3, stride=1, padding=1),
-		nn.ReLU(),
-		nn.MaxPool2d(kernel_size=2, stride=2),
-		
-		nn.Flatten(),
-		nn.Linear(294, 16),
-		nn.ReLU(),
-		nn.Linear(16, 10),
-		nn.Softmax(dim=1)
-	)
-	model_name = 'mlp'
-	opt = torch.optim.Adam(mlp.parameters())
-	crit = torch.nn.CrossEntropyLoss()
-	transform = transforms.Compose([
-		transforms.ToTensor(),
-		transforms.Normalize((0.1307,), (0.3081,))
-	])
-	dataset1 = datasets.MNIST('../data', train=True, download=True,
-		transform=transform)
-	dataset2 = datasets.MNIST('../data', train=False,
-		transform=transform)
-	tr_loader = torch.utils.data.DataLoader(dataset1, batch_size=64)
-	te_loader = torch.utils.data.DataLoader(dataset2, batch_size=64)
-	print(summary(mlp, (1, 28, 28)))
-	T = Trainer(mlp, model_name, opt, crit)
-	
-	trained_model = "G:\\My Drive\\Master\\Lab\\Experiment\\Trainer\\Models\\mlp_2023-03-17_19-05-10\\best_mlp_2023-03-17_19-05-10_epoch"
-	T.load_trained_model(trained_model)
-	preds = T.predict(te_loader)
-	x = 2
