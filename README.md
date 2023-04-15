@@ -1,4 +1,4 @@
-# MultiTimeSeries
+# PhysicalMultiTimeSeries
 
 ### basic info
 MTS is a generalized library for multi target multivariate time series prediction for physical experiments, 
