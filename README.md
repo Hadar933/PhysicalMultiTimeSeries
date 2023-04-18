@@ -1,7 +1,7 @@
 # PhysicalMultiTimeSeries
 
 ### basic info
-MTS is a generalized library for multi target multivariate time series prediction for physical experiments, 
+PMTS is a generalized library for multi target multivariate time series prediction for physical experiments, 
 mapping kinematics to forces or vice-versa.
 
 ### problem setup
