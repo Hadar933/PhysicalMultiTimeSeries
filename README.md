@@ -19,3 +19,10 @@ We have developed a framework that offers a `Trainer` class, which can be used t
 Our Trainer class comes with commonly used parameters such as batch size, train size, feature window size, and more. With an intuitive API similar to other popular frameworks, you can use the `.fit()` function to train your model and the `.predict()` function to generate predictions.
 
 A working example is provided under `main.py`
+
+## Working on
+Please note that the following features are not yet available in our framework, but they are expected to be implemented in the near future:
+
+- Pre-processing module: We plan to enhance our pre-processing capabilities by adding features such as normalizing, resampling, and interpolating data. This will improve data quality and reduce noise, resulting in better model performance.
+
+- Encoders for feature engineering: We will expand our feature engineering capabilities by developing additional encoders like derivatives and frequeicies extractio to handle different types of features and improve model performance. 
