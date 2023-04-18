@@ -17,3 +17,5 @@ PMTS is a generalized library for multi target, multivariate time series predict
 We have developed a framework that offers a `Trainer` class, which can be used to train a customized nn.Module model from PyTorch. The Trainer class is designed to work with features tensor shaped as `(N,H,F)` and target tensor shaped as `(N,H,T)`, where `N` represents the number of datasets, `H` represents the provided history, `F` represents the number of features, and `T` represents the number of targets.
 
 Our Trainer class comes with commonly used parameters such as batch size, train size, feature window size, and more. With an intuitive API similar to other popular frameworks, you can use the `.fit()` function to train your model and the `.predict()` function to generate predictions.
+
+A working example is provided under `main.py`
