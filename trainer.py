@@ -26,8 +26,11 @@ class Trainer:
                  patience: int, patience_tolerance: float,
                  n_epochs: int,
                  seed: int,
-                 norm_method: str):
+                 features_norm_method: str,
+                 targets_norm_method: str
+                 ):
         torch.manual_seed(seed)  # TODO: doesnt seem to do anything
+
         self.feature_win = feature_win
         self.target_win = target_win
         self.intersect = intersect
@@ -37,8 +40,9 @@ class Trainer:
         self.val_percent = val_percent
         self.train_percent = train_percent
 
-        self.normalizer = Normalizer(norm_method)
-        self.features = self.normalizer.fit_transform(features)
+        self.features_normalizer = Normalizer(features_norm_method)
+        self.targets_normalizer = Normalizer(targets_norm_method)
+        self.features = self.features_normalizer.fit_transform(features)
         self.targets = targets
 
         self.patience_tolerance: float = patience_tolerance
@@ -81,7 +85,8 @@ class Trainer:
     def _set_loaders(self):
         """ sets the train/val/test loaders and updates the training statistics in the yaml (for normalization)  """
         data_dict = utils.train_val_test_split(self.features, self.targets, self.train_percent, self.val_percent,
-                                               self.feature_win, self.target_win, self.intersect, self.batch_size)
+                                               self.feature_win, self.target_win, self.intersect, self.batch_size,
+                                               self.features_normalizer, self.targets_normalizer)
         # train_statistics = utils.tensor_stats(data_dict['train']['data'])
         # utils.update_json(self.info_path, train_statistics)
         return data_dict['train']['loader'], data_dict['val']['loader'], data_dict['test']['loader']
