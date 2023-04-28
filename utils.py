@@ -1,34 +1,47 @@
+import os.path
 from typing import Optional, Union, Dict, Tuple, Literal, List
-
 import numpy as np
 import scipy
-import yaml
+import json
 from plotly_resampler import FigureResampler
 import pandas as pd
 import plotly.graph_objects as go
 import torch
-
 from MultiTimeSeries.datasets import MultiTimeSeries
+from deprecated import deprecated
+
+TIME_FORMAT = '%Y-%m-%d_%H-%M-%S'
 
 
 def tensor_mb_size(v: torch.Tensor):
     return v.nelement() * v.element_size() / 1_000_000
 
 
-def df_statistics(df: pd.DataFrame):
-    """ returns  """
+def update_json(yaml_path: str, new_data):
+    """ updates a given yaml file with new data dictionary """
+    if os.path.exists(yaml_path):
+        with open(yaml_path, "r", encoding='utf-8') as f:
+            old_data = json.load(f)
+    else:
+        old_data = {}
+    with open(yaml_path, "w", encoding='utf-8') as f:
+        json.dump({**old_data, **new_data}, f, ensure_ascii=False, indent=4)
 
 
-def update_yaml(yaml_path: str, new_data: Dict):
-    """ updates a given yaml file with new data """
-    with open(yaml_path, 'a') as f:
-        yaml.dump(new_data, f)
+def set_time_index(df: pd.DataFrame, freq: float = 25.0):
+    """ takes in a df and converts its index to time given the provided frequency"""
+    start_time = pd.Timestamp('2023-04-24 00:00:00')
+    end_time = start_time + pd.Timedelta(seconds=len(df) / freq)
+    time_index = pd.date_range(start=start_time, end=end_time, periods=len(df))
+    time_values = time_index.strftime('%H:%M:%S.%f').tolist()
+    df.index = pd.to_datetime(time_values, format='%H:%M:%S.%f')
+    return df
 
 
 def plot(df: pd.DataFrame,
          title: Optional[str] = "Data vs Time",
-         x_title: Optional[str] = "time",
-         y_title: Optional[str] = "Features") -> None:
+         x_title: Optional[str] = "time / steps",
+         y_title: Optional[str] = "Data") -> None:
     """	plots a df with plotly resampler """
     fig = FigureResampler(go.Figure())
     for col in df.columns:
@@ -52,7 +65,8 @@ def load_data_from_prssm_paper(path: str = "G:\\My Drive\\Master\\Lab\\flapping-
                                kinematics_key: Optional[Literal['ds_pos', 'ds_u_raw', 'ds_u']] = "ds_pos",
                                forces_key: Optional[Literal['ds_y_raw', 'ds_y']] = "ds_y_raw",
                                return_all: Optional[bool] = False,
-                               forces_to_take: Optional[List[int]] = None) -> \
+                               forces_to_take: Optional[List[int]] = None,
+                               to_df: bool = False) -> \
         Union[Dict, Tuple[torch.Tensor, torch.Tensor]]:
     """
     loads the data from the PRSSM paper, based on a string that represents the request
@@ -75,6 +89,24 @@ def load_data_from_prssm_paper(path: str = "G:\\My Drive\\Master\\Lab\\flapping-
     forces = torch.Tensor(mat[forces_key])
     forces = forces if forces_to_take is None else forces[:, :, forces_to_take]
     return kinematics, forces
+
+
+@deprecated(reason="we now use a Normalization class that saves the statistics")
+def tensor_stats(mts: MultiTimeSeries, history_axis: int = 1):
+    """ given a time series object, extract features (B,H,F) and targets (B,H,T), relevant stats """
+    n_batches, history_size = mts.features.shape[:-1]
+    features = mts.features.reshape(-1, n_batches * history_size)
+    targets = mts.targets.reshape(-1, n_batches * history_size)
+
+    feature_stats = {f'min_features': features.min(axis=history_axis).values.tolist(),
+                     f'max_features': features.max(axis=history_axis).values.tolist(),
+                     f'mean_features': features.mean(axis=history_axis).tolist(),
+                     f'std_features': features.std(axis=history_axis).tolist()}
+    target_stats = {f'min_targets': targets.min(axis=history_axis).values.tolist(),
+                    f'max_targets': targets.max(axis=history_axis).values.tolist(),
+                    f'mean_targets': targets.mean(axis=history_axis).tolist(),
+                    f'std_targets': targets.std(axis=history_axis).tolist()}
+    return {**feature_stats, **target_stats}
 
 
 def train_val_test_split(features: np.ndarray, targets: np.ndarray,
@@ -125,3 +157,23 @@ def train_val_test_split(features: np.ndarray, targets: np.ndarray,
                     'loader': val_loader},
             'test': {'data': all_test_datasets,
                      'loader': all_test_dataloaders}}
+
+
+def format_df_torch_entries(df: pd.DataFrame):
+    """ takes in a df where every entry is a torch tensor and returns a new df with unpacked tensor values as cols """
+    old_cols = df.columns
+
+    def create_new_columns(row, col_name):
+        tensor = row[col_name]
+        new_cols = pd.Series(tensor.numpy())
+        new_col_names = [f"{col_name}_{i}" for i in range(len(tensor))]
+        return pd.Series(dict(zip(new_col_names, new_cols)))
+
+    for col_name in df.columns:
+        if col_name.startswith('pred_') or col_name.startswith('true_'):
+            new_cols = df.apply(create_new_columns, args=(col_name,), axis=1)
+            df[new_cols.columns] = new_cols
+    df = df.drop(columns=old_cols, axis=1)
+    return df
+
+
