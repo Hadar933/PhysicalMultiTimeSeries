@@ -10,6 +10,8 @@ import torch
 from MultiTimeSeries.datasets import MultiTimeSeries
 from deprecated import deprecated
 
+from MultiTimeSeries.normalizer import Normalizer
+
 TIME_FORMAT = '%Y-%m-%d_%H-%M-%S'
 
 
@@ -112,7 +114,8 @@ def tensor_stats(mts: MultiTimeSeries, history_axis: int = 1):
 def train_val_test_split(features: np.ndarray, targets: np.ndarray,
                          train_percent: float, val_percent: float,
                          feature_lag: int, target_lag: int, intersect: int,
-                         batch_size: int) -> Dict:
+                         batch_size: int,
+                         features_normalizer: Normalizer, targets_normalizer: Normalizer) -> Dict:
     """
     creates a time series train-val-test split for multiple multivariate time series
     :param features: the data itself
@@ -123,40 +126,33 @@ def train_val_test_split(features: np.ndarray, targets: np.ndarray,
     :param target_lag: the number of samples in the predicted value (usually one)
     :param intersect: an intersection between the feature and target lags
     :param batch_size: the batch size for the training/validation sets.
+    :param features_normalizer: a normalizer object for the features of the training data
+    :param targets_normalizer: a normalizer object for the targets of the training data
     :return: for the training and validation - regular pytorch loader. for the test - a loader for every dataset.
     """
     n_exp, hist_size, n_features = features.shape
     train_size = int(train_percent * n_exp)
     val_size = int(val_percent * n_exp)
     features_train, targets_train = features[:train_size], targets[:train_size]
+    features_train = features_normalizer.fit_transform(features_train)
+    targets_train = targets_normalizer.fit_transform(features_train)
     features_val, targets_val = features[train_size:train_size + val_size], targets[train_size:train_size + val_size]
     features_test, targets_test = features[train_size + val_size:], targets[train_size + val_size:]
     train_dataset = MultiTimeSeries(features_train, targets_train, feature_lag, target_lag, intersect)
     val_dataset = MultiTimeSeries(features_val, targets_val, feature_lag, target_lag, intersect)
-
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
     # since a prediction should be on a single dataset, we create a dataset (and a dataloader) for each of
     # the test datasets in the test tensor. In inference time, we can simply choose the test dataloader
     # using its index.
-    all_test_datasets = [MultiTimeSeries(
-        features_test[i].unsqueeze(0),
-        targets_test[i].unsqueeze(0),
-        feature_lag, target_lag, intersect
-    ) for i in range(features_test.shape[0])
-    ]
-    all_test_dataloaders = [torch.utils.data.DataLoader(
-        all_test_datasets[i],
-        batch_size=1,
-        shuffle=False
-    ) for i in range(len(all_test_datasets))
-    ]
-    return {'train': {'data': train_dataset,
-                      'loader': train_loader},
-            'val': {'data': val_dataset,
-                    'loader': val_loader},
-            'test': {'data': all_test_datasets,
-                     'loader': all_test_dataloaders}}
+    all_test_datasets = [MultiTimeSeries(features_test[i].unsqueeze(0), targets_test[i].unsqueeze(0),
+                                         feature_lag, target_lag, intersect)
+                         for i in range(features_test.shape[0])]
+    all_test_dataloaders = [torch.utils.data.DataLoader(all_test_datasets[i], batch_size=1, shuffle=False)
+                            for i in range(len(all_test_datasets))]
+    return {'train': {'data': train_dataset, 'loader': train_loader},
+            'val': {'data': val_dataset, 'loader': val_loader},
+            'test': {'data': all_test_datasets, 'loader': all_test_dataloaders}}
 
 
 def format_df_torch_entries(df: pd.DataFrame):
@@ -175,5 +171,3 @@ def format_df_torch_entries(df: pd.DataFrame):
             df[new_cols.columns] = new_cols
     df = df.drop(columns=old_cols, axis=1)
     return df
-
-
