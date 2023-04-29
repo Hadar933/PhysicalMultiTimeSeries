@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Optional
 
 import pandas as pd
 import torch
@@ -26,11 +26,13 @@ class Normalizer:
         else:
             raise ValueError(f"Normalization method '{self.method}' not recognized.")
 
-    def inverse_transform(self, tensor: torch.Tensor) -> torch.Tensor:
+    def inverse_transform(self, tensor: torch.Tensor, test_loader_idx: Optional[int] = None) -> torch.Tensor:
+        """ converts a normalized tensor to its original values. only works after fit_transform was used """
+        assert len(self.norm_params) > 0, 'Uninitialized norm params. Use fit_transform first'
         if self.method == 'zscore':
-            return self._inv_zscore(tensor)
+            return self._inv_zscore(tensor, test_loader_idx)
         elif self.method == 'minmax':
-            return self._inv_minmax(tensor)
+            return self._inv_minmax(tensor, test_loader_idx)
         elif self.method == 'identity':
             return tensor
         else:
@@ -52,19 +54,21 @@ class Normalizer:
         norm_tensor = (tensor - min_val) / (max_val - min_val)
         return norm_tensor
 
-    def _inv_zscore(self, tensor: torch.Tensor) -> torch.Tensor:
-        assert 'mean' in self.norm_params and 'std' in self.norm_params, \
-            'Uninitialized mean and/or std. Use fit_transform first'
+    def _inv_zscore(self, tensor: torch.Tensor, test_loader_idx: Optional[int] = None) -> torch.Tensor:
         mean_val = self.norm_params['mean']
         std_val = self.norm_params['std']
+        if test_loader_idx is not None:
+            mean_val = mean_val[test_loader_idx].unsqueeze(0)
+            std_val = std_val[test_loader_idx].unsqueeze(0)
         inv_norm_tensor = tensor * std_val + mean_val
         return inv_norm_tensor
 
-    def _inv_minmax(self, tensor: torch.Tensor) -> torch.Tensor:
-        assert 'min' in self.norm_params and 'max' in self.norm_params, \
-            'Uninitialized min and/or max. Use fit_transform first'
+    def _inv_minmax(self, tensor: torch.Tensor, test_loader_idx: Optional[int] = None) -> torch.Tensor:
         min_val = self.norm_params['min']
         max_val = self.norm_params['max']
+        if test_loader_idx is not None:
+            min_val = min_val[test_loader_idx].unsqueeze(0)
+            max_val = max_val[test_loader_idx].unsqueeze(0)
         inv_minmax_tensor = tensor * (max_val - min_val) + min_val
         return inv_minmax_tensor
 
@@ -74,13 +78,15 @@ if __name__ == '__main__':
 
     scaler = StandardScaler()  # for testing purposes
     kinematics, forces = utils.load_data_from_prssm_paper()
-    N = Normalizer()
+    N = Normalizer('zscore')
     n_forces = N.fit_transform(forces)
+    inv_forces = N.inverse_transform(n_forces)
     exp = 0
-    f, fn = forces[exp, :, :], n_forces[exp, :, :]
+    f, fn, finv = forces[exp, :, :], n_forces[exp, :, :], inv_forces[exp, :, :]
     fsk = torch.from_numpy(scaler.fit_transform(f.numpy()))
     df_f = pd.DataFrame(f, columns=[f"f_{i}" for i in range(f.shape[-1])])
     df_fn = pd.DataFrame(fn, columns=[f"fn_{i}" for i in range(fn.shape[-1])])
     df_fsk = pd.DataFrame(fsk, columns=[f"fsk_{i}" for i in range(fsk.shape[-1])])
-    df = pd.concat([df_f, df_fn, df_fsk], axis=1)
+    df_finv = pd.DataFrame(finv, columns=[f"finv_{i}" for i in range(finv.shape[-1])])
+    df = pd.concat([df_f, df_fn, df_fsk, df_finv], axis=1)
     utils.plot(df)
