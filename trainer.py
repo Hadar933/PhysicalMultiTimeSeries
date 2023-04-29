@@ -27,8 +27,7 @@ class Trainer:
                  n_epochs: int,
                  seed: int,
                  features_norm_method: str,
-                 targets_norm_method: str
-                 ):
+                 targets_norm_method: str):
         torch.manual_seed(seed)  # TODO: doesnt seem to do anything
 
         self.feature_win = feature_win
@@ -166,9 +165,10 @@ class Trainer:
         with torch.no_grad():
             for j, test_loader in enumerate(self.all_test_loaders):
                 curr_preds, curr_trues = [], []
-                for inputs_i, true_i in test_loader:
+                for inputs_i, true_i in tqdm(test_loader, desc=f"Predicting on test loader {j}"):
                     inputs_i.to(self.device)
                     pred_i = self.model(inputs_i)
+                    pred_i = self.targets_normalizer.inverse_transform(pred_i,j)
                     curr_preds.append(pred_i.squeeze())
                     curr_trues.append(true_i.squeeze())
                 all_preds[f"pred_{j}"] = curr_preds
