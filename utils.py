@@ -10,8 +10,6 @@ import torch
 from MultiTimeSeries.datasets import MultiTimeSeries
 from deprecated import deprecated
 
-from MultiTimeSeries.normalizer import Normalizer
-
 TIME_FORMAT = '%Y-%m-%d_%H-%M-%S'
 
 
@@ -115,7 +113,7 @@ def train_val_test_split(features: np.ndarray, targets: np.ndarray,
                          train_percent: float, val_percent: float,
                          feature_lag: int, target_lag: int, intersect: int,
                          batch_size: int,
-                         features_normalizer: Normalizer, targets_normalizer: Normalizer) -> Dict:
+                         features_normalizer, targets_normalizer) -> Dict:
     """
     creates a time series train-val-test split for multiple multivariate time series
     :param features: the data itself
@@ -133,11 +131,19 @@ def train_val_test_split(features: np.ndarray, targets: np.ndarray,
     n_exp, hist_size, n_features = features.shape
     train_size = int(train_percent * n_exp)
     val_size = int(val_percent * n_exp)
+
     features_train, targets_train = features[:train_size], targets[:train_size]
     features_train = features_normalizer.fit_transform(features_train)
-    targets_train = targets_normalizer.fit_transform(features_train)
+    targets_train = targets_normalizer.fit_transform(targets_train)
+
     features_val, targets_val = features[train_size:train_size + val_size], targets[train_size:train_size + val_size]
+    features_val = features_normalizer.fit_transform(features_train)
+    targets_val = targets_normalizer.fit_transform(targets_train)
+
     features_test, targets_test = features[train_size + val_size:], targets[train_size + val_size:]
+    features_test = features_normalizer.fit_transform(features_test)
+    targets_test = targets_normalizer.fit_transform(targets_test)
+
     train_dataset = MultiTimeSeries(features_train, targets_train, feature_lag, target_lag, intersect)
     val_dataset = MultiTimeSeries(features_val, targets_val, feature_lag, target_lag, intersect)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
