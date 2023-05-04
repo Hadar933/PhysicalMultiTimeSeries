@@ -20,6 +20,10 @@ Our Trainer class comes with commonly used parameters such as batch size, train 
 
 A working example is provided under `main.py`
 
+
+## Recent Updates
+We now support Normalizations, both for the features and the test taret. The normalization is perform in the pre-processing step of train-val-test split. Might still not support un-normalizing the predicted values yet.
+
 ## Working on
 Please note that the following features are not yet available in our framework, but they are expected to be implemented in the near future:
 
