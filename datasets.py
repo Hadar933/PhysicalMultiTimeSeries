@@ -40,7 +40,6 @@ class MultiTimeSeries(Dataset):
 
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
         # TODO: maybe add random start index.
-        # print("====================================================================================================")
         ds_idx = idx // self.n_windows_per_ds
         win_idx = idx % self.n_windows_per_ds
         features_window = self.features[ds_idx, win_idx: win_idx + self.feature_win]

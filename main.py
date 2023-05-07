@@ -27,12 +27,18 @@ if __name__ == '__main__':
     optimizer = torch.optim.Adam(model.parameters())
     features_norm = 'identity'
     targets_norm = 'minmax'
+    features_global_norm = True
+    targets_global_norm = True
     model_name = f"lstm_fc_{features_norm}_input_and_{targets_norm}_targets"
+
     trainer = Trainer(forces, kinematics, train_percent, val_percent, feature_win, target_win, intersect, batch_size,
                       model, model_name, optimizer, criterion, device, patience, patience_tolerance, n_epochs, seed,
-                      features_norm, targets_norm)
-    trainer.load_trained_model('G:\My Drive\Master\Lab\Experiment\MultiTimeSeries\Models\lstm_fc_identity_input_and_minmax_targets_2023-04-29_10-39-24\\best_lstm_fc_identity_input_and_minmax_targets_2023-04-29_10-39-24_epoch_19.pt')
-    # trainer.fit()
+                      features_norm, targets_norm, features_global_norm, targets_global_norm)
+    # TODO: when loading a model, all trainer arguments should be loaded as well !
+    # trainer.load_trained_model(
+    #     "G:\\My Drive\\Master\\Lab\\Experiment\\MultiTimeSeries\\Models\\lstm_fc_identity_input_and_minmax_targets_2023-05-07_11-58-39/best_lstm_fc_identity_input_and_minmax_targets_2023-05-07_11-58-39_epoch_19.pt")
+    trainer.fit()
     ret = trainer.predict()
     ret = utils.format_df_torch_entries(ret)
     utils.plot(ret)
+    x = 2
