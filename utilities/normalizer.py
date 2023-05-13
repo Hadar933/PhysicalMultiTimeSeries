@@ -1,11 +1,11 @@
 import random
 from abc import ABC, abstractmethod
-from typing import Dict, Optional, Literal, Union
+from typing import Literal, Union
 
 import pandas as pd
 import torch
 
-from MultiTimeSeries import utils
+from MultiTimeSeries.utilities import utils
 
 
 class Normalizer(ABC):

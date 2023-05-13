@@ -7,13 +7,14 @@ from plotly_resampler import FigureResampler
 import pandas as pd
 import plotly.graph_objects as go
 import torch
-from MultiTimeSeries.datasets import MultiTimeSeries
+from MultiTimeSeries.core.datasets import MultiTimeSeries
 from deprecated import deprecated
 
 TIME_FORMAT = '%Y-%m-%d_%H-%M-%S'
 
 
 def tensor_mb_size(v: torch.Tensor):
+    """ returns the size (in MB) of a given torch tensor"""
     return v.nelement() * v.element_size() / 1_000_000
 
 
@@ -60,13 +61,11 @@ def read_data(data_path: str) -> pd.DataFrame:
     return data
 
 
-def load_data_from_prssm_paper(path: str = "G:\\My Drive\\Master\\Lab\\flapping-wing-aerodynamics-prssm\\Data\\Input\\"
-                                           "flapping_wing_aerodynamics.mat",
+def load_data_from_prssm_paper(path: str = "G:\\My Drive\\Master\\Lab\\Experiment\\MultiTimeSeries\\Datasets\\flapping_wing_aerodynamics.mat",
                                kinematics_key: Optional[Literal['ds_pos', 'ds_u_raw', 'ds_u']] = "ds_pos",
                                forces_key: Optional[Literal['ds_y_raw', 'ds_y']] = "ds_y_raw",
                                return_all: Optional[bool] = False,
-                               forces_to_take: Optional[List[int]] = None,
-                               to_df: bool = False) -> \
+                               forces_to_take: Optional[List[int]] = None) -> \
         Union[Dict, Tuple[torch.Tensor, torch.Tensor]]:
     """
     loads the data from the PRSSM paper, based on a string that represents the request
@@ -137,28 +136,39 @@ def train_val_test_split(features: np.ndarray, targets: np.ndarray,
     targets_train = targets_normalizer.fit_transform(targets_train)  # same
 
     features_val, targets_val = features[train_size:train_size + val_size], targets[train_size:train_size + val_size]
-    features_val = features_normalizer.transform(features_val)  # TODO should be without fit
-    targets_val = targets_normalizer.transform(targets_val)  # same
+    features_val = features_normalizer.transform(features_val)
+    targets_val = targets_normalizer.transform(targets_val)
 
     features_test, targets_test = features[train_size + val_size:], targets[train_size + val_size:]
-    features_test = features_normalizer.transform(features_test)  # TODO should be without fit
+    features_test = features_normalizer.transform(features_test)
     targets_test = targets_normalizer.transform(targets_test)
 
     train_dataset = MultiTimeSeries(features_train, targets_train, feature_lag, target_lag, intersect)
     val_dataset = MultiTimeSeries(features_val, targets_val, feature_lag, target_lag, intersect)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+
     # since a prediction should be on a single dataset, we create a dataset (and a dataloader) for each of
     # the test datasets in the test tensor. In inference time, we can simply choose the test dataloader
-    # using its index.
-    all_test_datasets = [MultiTimeSeries(features_test[i].unsqueeze(0), targets_test[i].unsqueeze(0),
-                                         feature_lag, target_lag, intersect)
-                         for i in range(features_test.shape[0])]
+    # using its index:
+    all_test_datasets = [MultiTimeSeries(features_test[i].unsqueeze(0), targets_test[i].unsqueeze(0), feature_lag,
+                                         target_lag, intersect) for i in range(features_test.shape[0])]
     all_test_dataloaders = [torch.utils.data.DataLoader(all_test_datasets[i], batch_size=1, shuffle=False)
                             for i in range(len(all_test_datasets))]
-    return {'train': {'data': train_dataset, 'loader': train_loader},
-            'val': {'data': val_dataset, 'loader': val_loader},
-            'test': {'data': all_test_datasets, 'loader': all_test_dataloaders}}
+    return {
+        'train': {
+            'data': train_dataset,
+            'loader': train_loader
+        },
+        'val': {
+            'data': val_dataset,
+            'loader': val_loader
+        },
+        'test': {
+            'data': all_test_datasets,
+            'loader': all_test_dataloaders
+        }
+    }
 
 
 def format_df_torch_entries(df: pd.DataFrame):

@@ -1,17 +1,13 @@
 from datetime import datetime
-from typing import Optional, List, Tuple, Dict
-import utils
+from MultiTimeSeries.utilities import utils
 import pandas as pd
-import json
 from torch.utils.tensorboard import SummaryWriter
 import psutil
 import torch
 from tqdm import tqdm
 import os
-from torchinfo import summary
-import torch.nn as nn
 
-from MultiTimeSeries.normalizer import NormalizerFactory
+from MultiTimeSeries.utilities.normalizer import NormalizerFactory
 
 
 class Trainer:
