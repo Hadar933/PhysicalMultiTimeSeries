@@ -15,7 +15,7 @@ class RNN(nn.Module):
         :param hidden_dim: rnn hidden size
         :param num_layers: number of stacked rnn blocks
         :param output_dim: the output of the fully connected layer
-        :param dropout: dropout percentage in [0,1]
+        :param dropout: dropout percentage in [0,1], to be applied between RNN blocks (relevant for num_layers > 1)
         :param bidirectional: iff True
         """
         super(RNN, self).__init__()
