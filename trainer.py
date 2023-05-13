@@ -11,14 +11,17 @@ import os
 from torchinfo import summary
 import torch.nn as nn
 
-from MultiTimeSeries.normalizer import Normalizer
+from MultiTimeSeries.normalizer import NormalizerFactory
 
 
 class Trainer:
     """ a class that takes in a model and some training parameters and performs testing, evaluating and prediction """
 
     def __init__(self,
-                 features, targets, train_percent, val_percent, feature_win, target_win, intersect, batch_size,
+                 features, targets,
+                 train_percent, val_percent,
+                 feature_win, target_win, intersect,
+                 batch_size,
                  model: torch.nn.Module, model_name: str,
                  optimizer: torch.optim.Optimizer,
                  criterion: torch.nn.modules.loss._Loss,
@@ -27,7 +30,9 @@ class Trainer:
                  n_epochs: int,
                  seed: int,
                  features_norm_method: str,
-                 targets_norm_method: str):
+                 targets_norm_method: str,
+                 features_global_normalizer: bool,
+                 targets_global_normalizer: bool):
         torch.manual_seed(seed)  # TODO: doesnt seem to do anything
 
         self.feature_win = feature_win
@@ -39,9 +44,9 @@ class Trainer:
         self.val_percent = val_percent
         self.train_percent = train_percent
 
-        self.features_normalizer = Normalizer(features_norm_method)
-        self.targets_normalizer = Normalizer(targets_norm_method)
-        self.features = self.features_normalizer.fit_transform(features)
+        self.features_normalizer = NormalizerFactory.create(features_norm_method, features_global_normalizer)
+        self.targets_normalizer = NormalizerFactory.create(targets_norm_method, targets_global_normalizer)
+        self.features = features
         self.targets = targets
 
         self.patience_tolerance: float = patience_tolerance
@@ -168,7 +173,7 @@ class Trainer:
                 for inputs_i, true_i in tqdm(test_loader, desc=f"Predicting on test loader {j}"):
                     inputs_i.to(self.device)
                     pred_i = self.model(inputs_i)
-                    pred_i = self.targets_normalizer.inverse_transform(pred_i,j)
+                    pred_i = self.targets_normalizer.inverse_transform(pred_i)
                     curr_preds.append(pred_i.squeeze())
                     curr_trues.append(true_i.squeeze())
                 all_preds[f"pred_{j}"] = curr_preds

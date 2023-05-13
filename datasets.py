@@ -30,9 +30,9 @@ class MultiTimeSeries(Dataset):
         self.feature_win: int = feature_win
         self.target_win: int = target_win
         self.feature_target_intersect: int = feature_target_intersection
-        self.features: torch.Tensor = features
-        self.targets: torch.Tensor = targets
-        self.n_datasets, self.n_samples_per_ds, self.n_features = self.features.shape
+        self.normalized_features: torch.Tensor = features
+        self.normalized_targets: torch.Tensor = targets
+        self.n_datasets, self.n_samples_per_ds, self.n_features = self.normalized_features.shape
         self.n_windows_per_ds = self.n_samples_per_ds - self.feature_win + self.feature_target_intersect - self.target_win + 1
 
     def __len__(self) -> int:
@@ -42,8 +42,8 @@ class MultiTimeSeries(Dataset):
         # TODO: maybe add random start index.
         ds_idx = idx // self.n_windows_per_ds
         win_idx = idx % self.n_windows_per_ds
-        features_window = self.features[ds_idx, win_idx: win_idx + self.feature_win]
-        target_window = self.targets[ds_idx, win_idx + self.feature_win - self.feature_target_intersect:
+        features_window = self.normalized_features[ds_idx, win_idx: win_idx + self.feature_win]
+        target_window = self.normalized_targets[ds_idx, win_idx + self.feature_win - self.feature_target_intersect:
                                             win_idx + self.feature_win - self.feature_target_intersect + self.target_win]
         return features_window, target_window
 
