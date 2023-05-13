@@ -94,9 +94,9 @@ def load_data_from_prssm_paper(path: str = "G:\\My Drive\\Master\\Lab\\flapping-
 @deprecated(reason="we now use a Normalization class that saves the statistics")
 def tensor_stats(mts: MultiTimeSeries, history_axis: int = 1):
     """ given a time series object, extract features (B,H,F) and targets (B,H,T), relevant stats """
-    n_batches, history_size = mts.features.shape[:-1]
-    features = mts.features.reshape(-1, n_batches * history_size)
-    targets = mts.targets.reshape(-1, n_batches * history_size)
+    n_batches, history_size = mts.normalized_features.shape[:-1]
+    features = mts.normalized_features.reshape(-1, n_batches * history_size)
+    targets = mts.normalized_targets.reshape(-1, n_batches * history_size)
 
     feature_stats = {f'min_features': features.min(axis=history_axis).values.tolist(),
                      f'max_features': features.max(axis=history_axis).values.tolist(),
@@ -133,16 +133,16 @@ def train_val_test_split(features: np.ndarray, targets: np.ndarray,
     val_size = int(val_percent * n_exp)
 
     features_train, targets_train = features[:train_size], targets[:train_size]
-    features_train = features_normalizer.fit_transform(features_train)
-    targets_train = targets_normalizer.fit_transform(targets_train)
+    features_train = features_normalizer.fit_transform(features_train)  # statistics are set from training data
+    targets_train = targets_normalizer.fit_transform(targets_train)  # same
 
     features_val, targets_val = features[train_size:train_size + val_size], targets[train_size:train_size + val_size]
-    features_val = features_normalizer.fit_transform(features_train)
-    targets_val = targets_normalizer.fit_transform(targets_train)
+    features_val = features_normalizer.transform(features_val)  # TODO should be without fit
+    targets_val = targets_normalizer.transform(targets_val)  # same
 
     features_test, targets_test = features[train_size + val_size:], targets[train_size + val_size:]
-    features_test = features_normalizer.fit_transform(features_test)
-    targets_test = targets_normalizer.fit_transform(targets_test)
+    features_test = features_normalizer.transform(features_test)  # TODO should be without fit
+    targets_test = targets_normalizer.transform(targets_test)
 
     train_dataset = MultiTimeSeries(features_train, targets_train, feature_lag, target_lag, intersect)
     val_dataset = MultiTimeSeries(features_val, targets_val, feature_lag, target_lag, intersect)
