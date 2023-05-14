@@ -62,7 +62,7 @@ class Trainer:
 
         self._tb_writer: SummaryWriter = None
 
-        self._model_dir: str = ""
+        self.model_dir: str = ""
         self._best_model_path: str = ""
         self._info_path = ""
         self._create_model_dir()
@@ -72,10 +72,10 @@ class Trainer:
     def _create_model_dir(self):
         """ called when a trainer is initialized and creates a model dir with relevant information txt file(s) """
         init_timestamp = datetime.now().strftime(utils.TIME_FORMAT)
-        self._model_dir = f"{os.getcwd()}\\Models\\{self.model_name}_{init_timestamp}"
-        self._info_path = f"{self._model_dir}\\trainer_info.yaml"
-        if not os.path.exists(self._model_dir):
-            os.makedirs(self._model_dir)
+        self.model_dir = f"{os.getcwd()}\\saved_models\\{self.model_name}_{init_timestamp}"
+        self._info_path = f"{self.model_dir}\\trainer_info.yaml"
+        if not os.path.exists(self.model_dir):
+            os.makedirs(self.model_dir)
         # TODO: yaml file looks bad
         # model_summary = summary(self.model, input_size=(1, self.features.shape[1], self.features.shape[2]))
         utils.update_json(self._info_path, {'model': str(self.model), 'patience': self.patience,
@@ -133,7 +133,7 @@ class Trainer:
             self._best_val_loss = val_loss
             if self._best_model_path:
                 os.remove(self._best_model_path)
-            self._best_model_path = f"{self._model_dir}/best_{self.model_name}_{time}_epoch_{epoch}.pt"
+            self._best_model_path = f"{self.model_dir}/best_{self.model_name}_{time}_epoch_{epoch}.pt"
             torch.save(self.model.state_dict(), self._best_model_path)
         elif torch.abs(val_loss - prev_val_loss) <= self.patience_tolerance:  # if val doesn't improve, counter += 1
             self._early_stopping += 1
@@ -144,7 +144,7 @@ class Trainer:
     def fit(self) -> None:
         """ fits the model to the training data, with early stopping """
         fit_time = datetime.now().strftime(utils.TIME_FORMAT)
-        self._tb_writer = SummaryWriter(f'runs/{self.model_name}_{fit_time}')
+        self._tb_writer = SummaryWriter(f'tb_runs/{self.model_name}_{fit_time}')
         prev_val_loss = float('inf')
         for epoch in range(self.n_epochs):
             train_avg_loss = self._train_one_epoch(epoch)

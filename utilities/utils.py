@@ -7,7 +7,7 @@ from plotly_resampler import FigureResampler
 import pandas as pd
 import plotly.graph_objects as go
 import torch
-from MultiTimeSeries.core.datasets import MultiTimeSeries
+from MultiTimeSeries.Core.datasets import MultiTimeSeries
 from deprecated import deprecated
 
 TIME_FORMAT = '%Y-%m-%d_%H-%M-%S'
@@ -42,13 +42,16 @@ def set_time_index(df: pd.DataFrame, freq: float = 25.0):
 def plot(df: pd.DataFrame,
          title: Optional[str] = "Data vs Time",
          x_title: Optional[str] = "time / steps",
-         y_title: Optional[str] = "Data") -> None:
+         y_title: Optional[str] = "Data",
+         save_path: Optional[str] = None) -> None:
     """	plots a df with plotly resampler """
     fig = FigureResampler(go.Figure())
     for col in df.columns:
         fig.add_trace(go.Scattergl(name=col, showlegend=True), hf_x=df.index, hf_y=df[col])
     fig.update_layout(title=title, xaxis_title=x_title, yaxis_title=y_title,
                       margin=dict(l=20, r=20, t=30, b=0), height=700)
+    if save_path is not None:
+        fig.write_html(save_path)
     fig.show_dash(mode='external')
 
 
@@ -61,11 +64,12 @@ def read_data(data_path: str) -> pd.DataFrame:
     return data
 
 
-def load_data_from_prssm_paper(path: str = "G:\\My Drive\\Master\\Lab\\Experiment\\MultiTimeSeries\\Datasets\\flapping_wing_aerodynamics.mat",
-                               kinematics_key: Optional[Literal['ds_pos', 'ds_u_raw', 'ds_u']] = "ds_pos",
-                               forces_key: Optional[Literal['ds_y_raw', 'ds_y']] = "ds_y_raw",
-                               return_all: Optional[bool] = False,
-                               forces_to_take: Optional[List[int]] = None) -> \
+def load_data_from_prssm_paper(
+        path: str = "G:\\My Drive\\Master\\Lab\\Experiment\\MultiTimeSeries\\Datasets\\flapping_wing_aerodynamics.mat",
+        kinematics_key: Optional[Literal['ds_pos', 'ds_u_raw', 'ds_u']] = "ds_pos",
+        forces_key: Optional[Literal['ds_y_raw', 'ds_y']] = "ds_y_raw",
+        return_all: Optional[bool] = False,
+        forces_to_take: Optional[List[int]] = None) -> \
         Union[Dict, Tuple[torch.Tensor, torch.Tensor]]:
     """
     loads the data from the PRSSM paper, based on a string that represents the request
@@ -187,3 +191,13 @@ def format_df_torch_entries(df: pd.DataFrame):
             df[new_cols.columns] = new_cols
     df = df.drop(columns=old_cols, axis=1)
     return df
+
+
+if __name__ == '__main__':
+    df = pd.DataFrame({
+        'a': [i for i in range(10)],
+        'b': [i * 2 for i in range(10)],
+        'c': [-5 + i for i in range(10)]
+    })
+    plot(df, save_path="C:\\Users\\hadar\\Downloads\\tst")
+    x = 2

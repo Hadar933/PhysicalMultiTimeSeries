@@ -1,5 +1,5 @@
 from Zoo import rnn
-from MultiTimeSeries.core.trainer import Trainer
+from MultiTimeSeries.Core.trainer import Trainer
 from MultiTimeSeries.utilities import utils
 import torch
 import torch.nn as nn
@@ -17,7 +17,7 @@ if __name__ == '__main__':
     train_percent, val_percent = 0.9, 0.09
     feature_win, target_win, intersect = 120, 1, 0
     batch_size = 64
-    n_epochs = 30
+    n_epochs = 1
     seed = 3407
 
     criterion = nn.L1Loss()
@@ -26,9 +26,9 @@ if __name__ == '__main__':
     optimizer = torch.optim.Adam(model.parameters())
 
     features_norm, features_global_norm = 'identity', True
-    targets_norm, targets_global_norm = 'identity', True
+    targets_norm, targets_global_norm = 'minmax', True
 
-    model_name = f"{'bi-' if bidirectional else ''}lstm_fc_input{features_norm}_output_{targets_norm}"
+    model_name = f"{'bi-' if bidirectional else ''}lstm_fc_input_{features_norm}_output_{targets_norm}"
     print(summary(model, input_size=(batch_size, feature_win, input_size)))
 
     trainer = Trainer(forces, kinematics, train_percent, val_percent, feature_win, target_win, intersect, batch_size,
@@ -40,5 +40,5 @@ if __name__ == '__main__':
     trainer.fit()
     ret = trainer.predict()
     ret = utils.format_df_torch_entries(ret)
-    utils.plot(ret)
+    utils.plot(ret, save_path=f"{trainer.model_dir}\\results.html")
     x = 2
