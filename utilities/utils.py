@@ -1,14 +1,22 @@
 import os.path
 from typing import Optional, Union, Dict, Tuple, Literal, List
+
+import imageio
 import numpy as np
 import scipy
 import json
+
+from matplotlib import pyplot as plt
 from plotly_resampler import FigureResampler
 import pandas as pd
 import plotly.graph_objects as go
 import torch
+from tqdm import tqdm
+
 from MultiTimeSeries.Core.datasets import MultiTimeSeries
 from deprecated import deprecated
+
+from MultiTimeSeries.Zoo.seq2seq import Attention, Seq2Seq
 
 TIME_FORMAT = '%Y-%m-%d_%H-%M-%S'
 
@@ -193,11 +201,56 @@ def format_df_torch_entries(df: pd.DataFrame):
     return df
 
 
-if __name__ == '__main__':
-    df = pd.DataFrame({
-        'a': [i for i in range(10)],
-        'b': [i * 2 for i in range(10)],
-        'c': [-5 + i for i in range(10)]
-    })
-    plot(df, save_path="C:\\Users\\hadar\\Downloads\\tst")
-    x = 2
+def visualize_attention(model: Seq2Seq, test_loader) -> pd.DataFrame:
+    """
+
+    :param model: a sequence to sequence torch model
+    :param test_loader: a loader that contains test data
+    :return:
+    """
+    model.train(False)
+    images = []
+    with torch.no_grad():
+        for i, (inputs_i, true_i) in tqdm(enumerate(test_loader), total=len(test_loader)):
+            pred_i = model(inputs_i)
+            x_vals = torch.arange(inputs_i.shape[1])
+            y_vals = inputs_i.squeeze(0)
+            weights = model.attention.attn_weights.squeeze(0)
+            image = plot_with_background(x_vals, y_vals, weights, 'time', 'value',
+                                         f'Attention weights [{i}/{len(test_loader)}]')
+            images.append(image)
+    imageio.mimsave('attention_weights_over_time.mp4', images, fps=5)
+    return images
+
+
+def plot_with_background(x_values: torch.Tensor, y_values: torch.Tensor, w_values: torch.Tensor,
+                         x_label, y_label, title):
+    """
+    plots a figure given x_values and y_values and colors the background using w_values
+    :param x_values: x-axis values (time mostly) with shape (win_size,)
+    :param y_values: y-axis values (forces mostly) with shape (win_size, input_size)
+    :param w_values: color mapping (attention weights mostly) with shape (win_size,)
+    :return: an RGB image that represents the colored window plot
+    """
+    margin = 0.1
+    n_plots = y_values.shape[1]
+    fig, ax = plt.subplots(figsize=(8, 6))
+    for i in range(n_plots): # plotting the data itself
+        ax.plot(x_values, y_values[:, i])
+    cmap = plt.get_cmap('hot')
+    for j in range(len(x_values) - 1): # plotting the background
+        color = cmap(w_values[j].item())
+        ax.fill_betweenx([y_values.min() - margin, y_values.max() + margin], x_values[j], x_values[j + 1], color=color)
+    # Add a colorbar as a color index
+    cax = fig.add_axes([0.92, 0.15, 0.02, 0.7])  # Adjust position of the colorbar
+    norm = plt.Normalize(w_values.min(), w_values.max())  # Normalize colorbar to original 'w' values
+    cb = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), cax=cax)
+    cb.set_label('w values')
+    ax.set_xlim(x_values.min(), x_values.max())
+    ax.set_ylim(y_values.min() - margin, y_values.max() + margin)
+    plt.xlabel(x_label), plt.ylabel(y_label), plt.title(title)
+    fig.canvas.draw()
+    image = np.frombuffer(fig.canvas.tostring_rgb(), dtype='uint8')
+    image = image.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+    plt.close(fig)
+    return image
