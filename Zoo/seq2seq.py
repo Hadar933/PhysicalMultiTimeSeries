@@ -1,6 +1,6 @@
 ##### seq2seq + attention #####
-import random
 from typing import Tuple
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -55,6 +55,7 @@ class Attention(nn.Module):
         super(Attention, self).__init__()
         self.attn = nn.Linear(enc_hidden_size * (2 if enc_bidirectional else 1) + dec_hidden_size, dec_hidden_size)
         self.energy_weights_vec = nn.Linear(dec_hidden_size, 1, bias=False)
+        self.attn_weights = None
 
     def forward(self, dec_hidden: torch.Tensor, enc_outputs: torch.Tensor):
         """
@@ -68,8 +69,8 @@ class Attention(nn.Module):
         cat_hiddens = torch.cat((enc_outputs, dec_hidden), dim=2)
         # catting the hiddens so -> [batch_size, seq_size, dec_hidden_size + num_directions * enc_hidden_size]
         energy = torch.tanh(self.attn(cat_hiddens))  # [batch_size, seq_size, dec_hidden_size]
-        attn_weights = self.energy_weights_vec(energy).squeeze(2)  # [batch_size, seq_size]
-        return F.softmax(attn_weights, dim=1)
+        self.attn_weights = self.energy_weights_vec(energy).squeeze(2)  # [batch_size, seq_size]
+        return F.softmax(self.attn_weights, dim=1)
 
 
 class Decoder(nn.Module):
@@ -134,7 +135,7 @@ class Seq2Seq(nn.Module):
                                self.attention, enc_bidirectional)
         self.output_size = self.batch_size, self.target_lag, dec_output_size
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
         """
         @param x: [batch_size, src len, input size]
         @return:
@@ -170,8 +171,8 @@ if __name__ == '__main__':
     feature_lag = 480
     input_size = 7
     input_dim = batch_size, feature_lag, input_size
-    x = torch.randn(batch_size, feature_lag, input_size)
+    xx = torch.randn(batch_size, feature_lag, input_size)
     s2s = Seq2Seq(input_dim, target_lag, enc_embedding_size, enc_hidden_size, enc_num_layers, enc_bidirectional,
                   dec_embedding_size, dec_hidden_size, dec_output_size)
-    y = s2s(x)
+    y = s2s(xx)
     print(y)
