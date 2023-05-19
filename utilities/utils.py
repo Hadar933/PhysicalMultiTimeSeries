@@ -13,10 +13,10 @@ import plotly.graph_objects as go
 import torch
 from tqdm import tqdm
 
-from MultiTimeSeries.Core.datasets import MultiTimeSeries
+from Core.datasets import MultiTimeSeries
 from deprecated import deprecated
 
-from MultiTimeSeries.Zoo.seq2seq import Attention, Seq2Seq
+from Zoo.seq2seq import Attention, Seq2Seq
 
 TIME_FORMAT = '%Y-%m-%d_%H-%M-%S'
 
@@ -94,7 +94,10 @@ def load_data_from_prssm_paper(
     * beware - this is normalized w.r.t an unknown training data
     :return:
     """
-    mat: Dict = scipy.io.loadmat(path)
+    try:
+        mat: Dict = scipy.io.loadmat(path)
+    except FileNotFoundError:
+        mat: Dict = scipy.io.loadmat("/home/hadar/thesis/MultiTimeSeries/Datasets/flapping_wing_aerodynamics.mat")
     if return_all: return mat
     kinematics = torch.Tensor(mat[kinematics_key])
     forces = torch.Tensor(mat[forces_key])
@@ -209,9 +212,12 @@ def visualize_attention(model: Seq2Seq, test_loader) -> pd.DataFrame:
     :return:
     """
     model.train(False)
+    device = torch.device('cpu')
+    model = model.to(device)
     images = []
     with torch.no_grad():
         for i, (inputs_i, true_i) in tqdm(enumerate(test_loader), total=len(test_loader)):
+            inputs_i = inputs_i.to(device)
             pred_i = model(inputs_i)
             x_vals = torch.arange(inputs_i.shape[1])
             y_vals = inputs_i.squeeze(0)

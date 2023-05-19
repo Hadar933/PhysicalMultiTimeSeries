@@ -1,5 +1,5 @@
 from datetime import datetime
-from MultiTimeSeries.utilities import utils
+from utilities import utils
 import pandas as pd
 from torch.utils.tensorboard import SummaryWriter
 import psutil
@@ -7,7 +7,7 @@ import torch
 from tqdm import tqdm
 import os
 
-from MultiTimeSeries.utilities.normalizer import NormalizerFactory
+from utilities.normalizer import NormalizerFactory
 
 
 class Trainer:
@@ -167,8 +167,8 @@ class Trainer:
             for j, test_loader in enumerate(self.all_test_loaders):
                 curr_preds, curr_trues = [], []
                 for inputs_i, true_i in tqdm(test_loader, desc=f"Predicting on test loader {j}"):
-                    inputs_i.to(self.device)
-                    pred_i = self.model(inputs_i)
+                    inputs_i = inputs_i.to(self.device)
+                    pred_i = self.model(inputs_i).to('cpu')
                     pred_i = self.targets_normalizer.inverse_transform(pred_i)
                     curr_preds.append(pred_i.squeeze())
                     curr_trues.append(true_i.squeeze())
