@@ -178,5 +178,5 @@ class Trainer:
 
     def load_trained_model(self, trained_model_path: str) -> None:
         """ loads into the trainer a trained model from memory """
-        self.model.load_state_dict(torch.load(trained_model_path))
+        self.model.load_state_dict(torch.load(trained_model_path, map_location=self.device))
         self.model.eval()
