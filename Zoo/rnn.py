@@ -19,14 +19,14 @@ class RNN(nn.Module):
         :param bidirectional: iff True
         """
         super(RNN, self).__init__()
-        self.name = name
+        self.name = name.upper()
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
         self.num_layers = num_layers
         self.dropout = dropout
         self.bidirectional = bidirectional
         self.output_dim = output_dim
-        self.rnn = getattr(nn, name.upper())(input_dim, hidden_dim, num_layers, dropout=dropout,
+        self.rnn = getattr(nn, self.name)(input_dim, hidden_dim, num_layers, dropout=dropout,
                                              bidirectional=bidirectional,
                                              batch_first=True)
         self.fc = nn.Linear(hidden_dim * (2 if bidirectional else 1), output_dim)
